@@ -11,10 +11,26 @@ module Phlex
 
     class << self
       attr_accessor :rendered_at_least_once
+
+      def compile
+        return if @compiled
+        return unless name
+        return if name.start_with? "#"
+
+        Compiler.new(self).call
+
+        @compiled = true
+      end
+
+      def compiled?
+        !!@compiled
+      end
     end
 
     def call(buffer = +"", view_context: nil, parent: nil, &block)
       raise "The same component instance shouldn't be rendered twice" if rendered?
+
+      self.class.compile
 
       @_rendered = true
       @_target = buffer
@@ -33,15 +49,13 @@ module Phlex
       @_rendered ||= false
     end
 
-    HTML::STANDARD_ELEMENTS.each do |element|
-      register_element(element)
+    HTML::STANDARD_ELEMENTS.each do |method_name, tag|
+      register_element(method_name, tag: tag)
     end
 
-    HTML::VOID_ELEMENTS.each do |element|
-      register_void_element(element)
+    HTML::VOID_ELEMENTS.each do |method_name, tag|
+      register_void_element(method_name, tag: tag)
     end
-
-    register_element :template_tag, tag: "template"
 
     def content(&block)
       return unless block_given?
